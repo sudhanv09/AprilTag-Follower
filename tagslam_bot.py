@@ -12,10 +12,10 @@ from math import atan2,radians
 tag_x = 0.0
 tag_z = 0.0
 tag_store = {} # store tag id and (x,z) coordinates
+num_tags = 10
 tag_detect = False
 
 check_right = True
-
 
 
 # getting the values from apriltag_ros/AprilTagDetectionArray topic
@@ -28,7 +28,7 @@ def getTagPosition(msg):
         tag_id = msg.detections[0].id[0] # get tag id      
         rate.sleep()                  
 
-        tag_store[tag_id] = (tag_id,tag_x,tag_z) # we take the x and z value and store in array
+        tag_store[tag_id] = (tag_id,tag_x,tag_z) 
         tag_detect = True
 
 
@@ -48,30 +48,32 @@ def getTagPosition(msg):
                     break    
                 rate.sleep() 
             check_right = True
-                     
+                      
 
     else:
         check_right = True
         rospy.loginfo('Detected tag {}'.format(tag_store[tag_id][0])) # read tag
         error_distance = (tag_store[tag_id][2])   # we take error between tag and robot
         offset = (tag_store[tag_id][1]) # this offset
+        angle2goal = (atan2(offset,error_distance)) # arctangent function
 
         rospy.loginfo("error_distance: {}".format(error_distance)) 
         rospy.loginfo("offset: {}".format(offset)) 
-
         
         # cases :
-        if offset > 0.12:    
+        if offset > 0.12:   
             rospy.loginfo("right")
 
             robotVel.publish(turn_right)
-            rate.sleep()              
+            rate.sleep() 
+            # robotVel.publish(forward)                
 
-        elif offset <0.04:  
+        elif offset <0.04:    
             rospy.loginfo("left")
 
             robotVel.publish(turn_left)
             rate.sleep()
+            # robotVel.publish(forward) 
 
         elif error_distance > 0.55:  
             rospy.loginfo('forward!')
@@ -84,6 +86,7 @@ def getTagPosition(msg):
             forward.linear.x = 0.15 # if tag is in same line we go forward
             robotVel.publish(forward)
             rate.sleep()                              
+
 
 
 forward = Twist()
@@ -109,7 +112,9 @@ if __name__ == '__main__':
     rate = rospy.Rate(50)
 
     robotVel = rospy.Publisher('/RosAria/cmd_vel',Twist,queue_size=10)
+    subPose = rospy.Subscriber('/RosAria/pose',Odometry,robotPose)
     tagdetectSub = rospy.Subscriber('/tag_detections',AprilTagDetectionArray,getTagPosition) 
+  
 
     rospy.spin()
 
